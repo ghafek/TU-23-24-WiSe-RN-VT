@@ -97,7 +97,7 @@ int main (int argc, char* argv[]) {
            printf("New socket creation error \n");
        }
 
-       if (send(new_fd, "Reply", 7, 0) == -1){
+       if (send(new_fd, "Reply", 5, 0) == -1){
            printf("Sending message error \n");
            close(new_fd);
            exit(1);
