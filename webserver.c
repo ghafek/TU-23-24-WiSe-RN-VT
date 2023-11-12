@@ -4,9 +4,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <errno.h>
+//#include <errno.h>
 #include <arpa/inet.h>
-#include <errno.h>
+//#include <errno.h>
 //#include <netinet/in.h>
 #include <unistd.h>
 
@@ -27,14 +27,15 @@ int main (int argc, char* argv[]) {
     struct sockaddr_in sa;
 
     //Save the IP Address and Port from the Command Line Arguments
+    //Check if Port is passed as a number format
     const char* IP = argv[1];
-    int PORT = atoi(argv[2]);
+    const int PORT = atoi(argv[2]);
     
      //Fill the sa structure
     memset(&sa, 0, sizeof(sa)); //clear up the struct first
     sa.sin_family = AF_INET; //IPv4 Address Family
     sa.sin_port = htons(PORT); //Port in Network Byte Order
-    inet_pton(AF_INET, IP, &(sa.sin_addr));
+    inet_pton(AF_INET, IP, &(sa.sin_addr)); //IP from text to binary form
     
     //Check if a correct IP Address format was entered (0.0.0.0)
     if (inet_pton(AF_INET, IP, &(sa.sin_addr)) != 1)
@@ -44,7 +45,7 @@ int main (int argc, char* argv[]) {
     }
 
     //Check if Port is correctly passed as an Argument
-    if (PORT < 0 || PORT > 65535) 
+    if (PORT < 1024 || PORT > 65535) 
     {
         printf("Please enter a valid Port number \n");
         exit(1);
@@ -75,6 +76,7 @@ int main (int argc, char* argv[]) {
     }
 
     // Listen for incoming connections
+    // Listen to any number of connections
     if (listen(sockfd, 10) == -1) {  //10 is the number of connections that can Queue
         printf("Listen error");
         close(sockfd);
@@ -83,6 +85,18 @@ int main (int argc, char* argv[]) {
         printf("Listen successful \n");
     }
 
+    //Save the incoming connections address in the struct
+    struct sockaddr_storage their_addr;
+    socklen_t addr_size;
+    addr_size = sizeof their_addr;
+
+    //accept new connections
+    int newfd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size)
+    
+
+    while (1) {
+
+    }
 
     //Close Socket
     close(sockfd);
