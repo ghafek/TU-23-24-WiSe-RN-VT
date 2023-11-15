@@ -97,34 +97,36 @@ int main (int argc, char* argv[]) {
             printf("New socket creation error \n");
         }
 
-//       if (send(new_fd, "Reply", 5, 0) == -1) {
-//           printf("Sending message error \n");
-//           close(new_fd);
-//           exit(1);
-//       } else printf("Message sent \n");
-
-        //receive until disconnected
-        while (1) {
+        while(1) {
             //variable to store received messages
-            char *buf;
-            int receive_value = recv(new_fd, buf, 1024, 0);
+        char buf[100];
+        int receive_value = recv(new_fd, buf, 100, 0);
 
-//            if (receive_value == -1) {
-//                printf("Receive error \n");
-//                close(new_fd);
-//                exit(1);
-//            }
-            if (strstr(buf, "\r\n\r\n") != NULL) {
-                if (send(new_fd, "Reply\r\n\r\n", 13, 0) == -1) {
-                    printf("Sending message error \n");
-                    close(new_fd);
-                    exit(1);
-                } else printf("Message sent \n");
-            }
+        printf("%s\n", buf);
+
+
+//variable to store received messages
+
+        if(strstr(buf, "hi") != NULL) {
+            
+        printf("%s", buf);
+
+      if (send(new_fd, "Reply\n", 5, 0) == -1) {
+          printf("Sending message error \n");
+          close(new_fd);
+          exit(1);
+      } else printf("Message sent \n");
         }
+        
+        
+      
+
+        }
+        
+        
 
         //Message sent, close new socket
-        close(new_fd);
+        //close(new_fd);
 
     }
 
