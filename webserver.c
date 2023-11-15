@@ -93,19 +93,41 @@ int main (int argc, char* argv[]) {
         //accept new connections
         int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
 
-       if (new_fd == -1){
-           printf("New socket creation error \n");
-       }
+        if (new_fd == -1){
+            printf("New socket creation error \n");
+        }
 
-       if (send(new_fd, "Reply", 5, 0) == -1){
-           printf("Sending message error \n");
-           close(new_fd);
-           exit(1);
-       }
-       else printf("Message sent \n");
+//       if (send(new_fd, "Reply", 5, 0) == -1) {
+//           printf("Sending message error \n");
+//           close(new_fd);
+//           exit(1);
+//       } else printf("Message sent \n");
 
-       //Message sent, close new socket
-       close(new_fd);
+        //receive until disconnected
+        while (1) {
+            //variable to store received messages
+            char buf[1024];
+            int receive_value = recv(new_fd, buf, 1024, 0);
+            char temp[1024];
+            strncat(temp, buf, sizeof(buf));
+
+//            if (receive_value == -1) {
+//                printf("Receive error \n");
+//                close(new_fd);
+//                exit(1);
+//            }
+            if (strstr(temp, "\r\n\r\n") != NULL) {
+                memset(temp, 0, sizeof(temp));
+                if (send(new_fd, "Reply\r\n\r\n", 13, 0) == -1) {
+                    printf("Sending message error \n");
+                    close(new_fd);
+                    exit(1);
+                } else printf("Message sent \n");
+            }
+        }
+
+        //Message sent, close new socket
+        close(new_fd);
 
     }
 
