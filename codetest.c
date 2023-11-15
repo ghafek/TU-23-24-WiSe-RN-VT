@@ -103,25 +103,24 @@ int main (int argc, char* argv[]) {
 //           exit(1);
 //       } else printf("Message sent \n");
 
-        //variable to store received messages
-        void *buf;
-        int receive_value = recv(sockfd, buf, 100, 0);
-
         //receive until disconnected
-        while (receive_value != 0) {
-            if (receive_value == -1){
-                printf("Receive error \n");
-                close(new_fd);
-                exit(1);
-            }
-            if (strncmp(buf + (strlen(buf) - strlen("\r\n\r\n")), "\r\n\r\n", strlen(buf)) == 0){
+        while (1) {
+            //variable to store received messages
+            char *buf;
+            int receive_value = recv(new_fd, buf, 1024, 0);
+
+//            if (receive_value == -1) {
+//                printf("Receive error \n");
+//                close(new_fd);
+//                exit(1);
+//            }
+            if (strstr(buf, "\r\n\r\n") != NULL) {
                 if (send(new_fd, "Reply\r\n\r\n", 13, 0) == -1) {
                     printf("Sending message error \n");
                     close(new_fd);
                     exit(1);
                 } else printf("Message sent \n");
             }
-            receive_value = recv(sockfd, buf, 100, 0);
         }
 
         //Message sent, close new socket
