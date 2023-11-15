@@ -95,10 +95,8 @@ int main (int argc, char* argv[]) {
     
 
     while (1) {
-
     }
 
     //Close Socket
     close(sockfd);
-
 }
