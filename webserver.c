@@ -92,9 +92,27 @@ int main (int argc, char* argv[]) {
 
     //accept new connections
     int newfd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size)
-    
+
 
     while (1) {
+        addr_size = sizeof their_addr;
+        //accept new connections
+        int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
+
+        if (new_fd == -1){
+            printf("New socket creation error \n");
+        }
+
+        if (send(new_fd, "Reply", 5, 0) == -1){
+            printf("Sending message error \n");
+            close(new_fd);
+            exit(1);
+        }
+        else printf("Message sent \n");
+
+        //Message sent, close new socket
+        close(new_fd);
+
     }
 
     //Close Socket
