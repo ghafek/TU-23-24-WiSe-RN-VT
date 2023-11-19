@@ -120,11 +120,7 @@ int main (int argc, char* argv[]) {
             buf[receive_value] = '\0'; //set a null terminator for the end of the buffer
             strncat(temp, buf, receive_value); //add the content of buffer to temp
 
-            //check for packet end
-            int pos = strlen(temp) - strlen(paket_end); //position of the start of the packet end identifier
-
-            //if packet end match
-            if (pos >= 0 && strcmp(temp + pos, paket_end) == 0) {
+            while (strstr(temp, paket_end) != NULL) {
                 // Full packet received
                 if (send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0) == -1) {
                     printf("Sending message error\n");
@@ -132,8 +128,11 @@ int main (int argc, char* argv[]) {
                     break;
                 } else printf("Message sent\n");
 
+                //find the end position of the processed packet
+                char* pos = strstr(temp, paket_end) + strlen(paket_end);
+
                 //remove the processed packet
-                temp[pos] = '\0';
+                temp[strlen(pos)] = '\0';
             }
         }
     }
