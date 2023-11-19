@@ -118,6 +118,14 @@ int main (int argc, char* argv[]) {
                 break;
             }
 
+            //Error message for invalid request
+            if (send(new_fd, "HTTP/1.1 400 Bad Request", strlen("HTTP/1.1 400 Bad Request"), 0) == -1) {
+                printf("Sending message error\n");
+                close(new_fd);
+                break;
+            } else printf("Error message sent\n");
+
+
             strcat(buf, temp); //add the content of temp to buffer
             while (strstr(buf, paket_end) != NULL) {
 
