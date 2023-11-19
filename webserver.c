@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+//#include <ws2tcpip.h>
 
 
 int main (int argc, char* argv[]) {
@@ -48,6 +50,8 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
+
+
     //Socket Creation
     int sockfd;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -83,57 +87,57 @@ int main (int argc, char* argv[]) {
     //Save the incoming connections address in the struct
     struct sockaddr_storage their_addr;
     socklen_t addr_size;
+
     while (1) {
         addr_size = sizeof their_addr;
         //accept new connections
         int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
+
         if (new_fd == -1){
             printf("New socket creation error \n");
         }
-        char lastPartBuffer[2] = {0}; // Buffer to store the last part of the message
-        char buf[1024] = {0};         // Main buffer for current message
-        while(1) {
-            int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
-            if (new_fd == -1) {
-                perror("Accept failed");
-                continue;
-            }
-            char lastPartBuffer[2] = {0}; // Buffer to store the last part of the message
-            char buf[1024] = {0};         // Main buffer for current message
 
-        while(1) {
-           /*   //Parameters//
-            *       buf: (char)->store the message
-            *       receive_value:  (int)-> Length of the received value
-            *   //Function//
-            *       1.create a buffer
-            *       2.Create a int
-            *       3.Check the received values is Null
-           */
-            char buf[100];
-            int receive_value = recv(new_fd, buf, 100, 0);
-            if (receive_value == 0) {
-                printf("Client closed the connection \n");
+        //variable to store received messages
+        char temp[1024] = ""; //store messages from client
+        char buf[1024] = ""; //copy the content of temp
+        char* paket_end = "\r\n\r\n"; //identifier for packet end
+
+        //receive until disconnected
+        while (1) {
+            memset(temp, 0, 1024);
+            int receive_value = recv(new_fd, temp, 1024, 0);
+
+            if (receive_value == -1) {
+                printf("Receive error\n");
                 close(new_fd);
-                break; // Break from the inner loop
-            } else if (receive_value == -1) {
-                printf("Receive error \n");
+                break;
+
+            } else if (receive_value == 0) {
+                printf("Client disconnected\n");
                 close(new_fd);
-                break; // Break from the inner loop
+                break;
             }
-            //variable to store received messages
-            if(strstr(buf, "hi") != NULL) {
-                printf("%s", buf);
-                if (send(new_fd, "Reply\n", 5, 0) == -1) {
-                    printf("Sending message error \n");
+
+            strcat(buf, temp); //add the content of temp to buffer
+            while (strstr(buf, paket_end) != NULL) {
+
+                // Full packet received
+                if (send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0) == -1) {
+                    printf("Sending message error\n");
                     close(new_fd);
-                    exit(1);
-                } else printf("Message sent \n");
+                    break;
+                } else printf("Message sent\n");
+
+                //find the end position of the processed packet
+                char* pos = strstr(buf, paket_end) + strlen(paket_end);
+
+                //remove the processed packet
+                strcpy(buf, pos);
             }
         }
-        Message sent, close new socket
-        close(new_fd);
     }
+
     //Close Socket
     close(sockfd);
+
 }
