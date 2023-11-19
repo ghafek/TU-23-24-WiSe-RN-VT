@@ -97,40 +97,57 @@ int main (int argc, char* argv[]) {
             printf("New socket creation error \n");
         }
 
+        char buf[1024] = "";
+        char temp[1024] = "";
+        char* paket_end = "\r\n\r\n";
+        char* bad_request = "HTTP/1.1 400 Bad Request\r\n\r\n";
+
+
         while(1) {
-            //variable to store received messages
-        char buf[100];
-        int receive_value = recv(new_fd, buf, 100, 0);
+            memset(temp, 0, 1024);
+            int receive_value = recv(new_fd, temp, 1024, 0);
+            strcat(buf, temp);
+            while (strstr(buf, paket_end) != NULL) {
+                // if (strstr(buf, "HTTP/1.") == NULL) {
+                //     send(new_fd, bad_request, strlen(bad_request), 0);
+                // }
+                // else {
+                //     if(strstr(buf, "GET") != NULL) {
+                //     send(new_fd, "404", strlen("404"), 0);
+                // }
+                // else {
 
-        printf("%s\n", buf);
+                //     send(new_fd, "501", strlen("501"), 0);
+                // }
 
+                // send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0);
 
-//variable to store received messages
+                // }
 
-        if(strstr(buf, "hi") != NULL) {
-            
-        printf("%s", buf);
+                if (strstr(buf, "HTTP/1.") != NULL) {
+                    if (strstr(buf, "GET") != NULL)
+                    {
+                        send(new_fd, "404\r\n\r\n", strlen("501\r\n\r\n"),0);
+                    }
+                    else {
+                        send(new_fd, "501\r\n\r\n", strlen("501\r\n\r\n"),0);
+                    }
+                }
+                else {
+                    send(new_fd, bad_request, strlen(bad_request),0);
+                }
 
-      if (send(new_fd, "Reply\n", 5, 0) == -1) {
-          printf("Sending message error \n");
-          close(new_fd);
-          exit(1);
-      } else printf("Message sent \n");
+                char* pos = strstr(buf, paket_end) + strlen(paket_end);
+                strcpy(buf, pos);
+            }
+
+            printf("temp = %s", temp);
+            printf("buf = %s", buf);
         }
-        
-        
-      
-
-        }
-        
-        
-
-        //Message sent, close new socket
-        //close(new_fd);
 
     }
 
     //Close Socket
-    close(sockfd);
+    //close(sockfd);
 
 }
