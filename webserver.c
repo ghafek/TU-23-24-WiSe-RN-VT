@@ -1,20 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-//#include <errno.h>
-#include <arpa/inet.h>
-//#include <errno.h>
-//#include <netinet/in.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+
 
 int main (int argc, char* argv[]) {
 
     ////Only Implemented for IPv4 Till now, Can use getaddrinfo to simult. use for IPv6 and IPv4
     ////Preferably use errno, perror when throwing errors, instead of simple printf.
-    
+
 
     //Check the command line Arguments count (webserver 0.0.0.0 1234).
     if (argc != 3)
@@ -30,13 +27,13 @@ int main (int argc, char* argv[]) {
     //Check if Port is passed as a number format
     const char* IP = argv[1];
     const int PORT = atoi(argv[2]);
-    
-     //Fill the sa structure
+
+    //Fill the sa structure
     memset(&sa, 0, sizeof(sa)); //clear up the struct first
     sa.sin_family = AF_INET; //IPv4 Address Family
     sa.sin_port = htons(PORT); //Port in Network Byte Order
     inet_pton(AF_INET, IP, &(sa.sin_addr)); //IP from text to binary form
-    
+
     //Check if a correct IP Address format was entered (0.0.0.0)
     if (inet_pton(AF_INET, IP, &(sa.sin_addr)) != 1)
     {
@@ -45,18 +42,16 @@ int main (int argc, char* argv[]) {
     }
 
     //Check if Port is correctly passed as an Argument
-    if (PORT < 1024 || PORT > 65535) 
+    if (PORT < 1024 || PORT > 65535)
     {
         printf("Please enter a valid Port number \n");
         exit(1);
     }
-    
-
 
     //Socket Creation
     int sockfd;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) 
+    if (sockfd == -1)
     {
         printf("Socket creation failure \n");
         exit(1);
@@ -88,31 +83,56 @@ int main (int argc, char* argv[]) {
     //Save the incoming connections address in the struct
     struct sockaddr_storage their_addr;
     socklen_t addr_size;
-    addr_size = sizeof their_addr;
-
-    //accept new connections
-    int newfd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
-
     while (1) {
         addr_size = sizeof their_addr;
         //accept new connections
         int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
-
         if (new_fd == -1){
             printf("New socket creation error \n");
         }
-        while(1){
-        }
+        char lastPartBuffer[2] = {0}; // Buffer to store the last part of the message
+        char buf[1024] = {0};         // Main buffer for current message
+        while(1) {
+            int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
+            if (new_fd == -1) {
+                perror("Accept failed");
+                continue;
+            }
+            char lastPartBuffer[2] = {0}; // Buffer to store the last part of the message
+            char buf[1024] = {0};         // Main buffer for current message
 
-//        if (send(new_fd, "Reply", 5, 0) == -1){
-//            printf("Sending message error \n");
-//            close(new_fd);
-//            exit(1);
-//        }
-//        else printf("Message sent \n");
-//
-//        //Message sent, close new socket
-//        close(new_fd);
+        while(1) {
+           /*   //Parameters//
+            *       buf: (char)->store the message
+            *       receive_value:  (int)-> Length of the received value
+            *   //Function//
+            *       1.create a buffer
+            *       2.Create a int
+            *       3.Check the received values is Null
+           */
+            char buf[100];
+            int receive_value = recv(new_fd, buf, 100, 0);
+            if (receive_value == 0) {
+                printf("Client closed the connection \n");
+                close(new_fd);
+                break; // Break from the inner loop
+            } else if (receive_value == -1) {
+                printf("Receive error \n");
+                close(new_fd);
+                break; // Break from the inner loop
+            }
+            //variable to store received messages
+            if(strstr(buf, "hi") != NULL) {
+                printf("%s", buf);
+                if (send(new_fd, "Reply\n", 5, 0) == -1) {
+                    printf("Sending message error \n");
+                    close(new_fd);
+                    exit(1);
+                } else printf("Message sent \n");
+            }
+        }
+        Message sent, close new socket
+        close(new_fd);
     }
     //Close Socket
     close(sockfd);
