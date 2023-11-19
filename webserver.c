@@ -97,38 +97,45 @@ int main (int argc, char* argv[]) {
             printf("New socket creation error \n");
         }
 
-//       if (send(new_fd, "Reply", 5, 0) == -1) {
-//           printf("Sending message error \n");
-//           close(new_fd);
-//           exit(1);
-//       } else printf("Message sent \n");
+        //variable to store received messages
+        char buf[1024]; //store messages from client
+        char temp[1024] = ""; //copy the content of buffer
+        char* paket_end = "\r\n\r\n"; //identifier for packet end
 
         //receive until disconnected
         while (1) {
-            //variable to store received messages
-            char buf[1024];
-            int receive_value = recv(new_fd, buf, 1024, 0);
-            char temp[1024];
-            strncat(temp, buf, sizeof(buf));
+            int receive_value = recv(new_fd, buf, sizeof(buf) - 1, 0);
 
-//            if (receive_value == -1) {
-//                printf("Receive error \n");
-//                close(new_fd);
-//                exit(1);
-//            }
-            if (strstr(temp, "\r\n\r\n") != NULL) {
-                memset(temp, 0, sizeof(temp));
-                if (send(new_fd, "Reply\r\n\r\n", 13, 0) == -1) {
-                    printf("Sending message error \n");
+            if (receive_value == -1) {
+                printf("Receive error\n");
+                close(new_fd);
+                break;
+
+            } else if (receive_value == 0) {
+                printf("Client disconnected\n");
+                close(new_fd);
+                break;
+            }
+
+            buf[receive_value] = '\0'; //set a null terminator for the end of the buffer
+            strncat(temp, buf, receive_value); //add the content of buffer to temp
+
+            //check for packet end
+            int pos = strlen(temp) - strlen(paket_end); //position of the start of the packet end identifier
+
+            //if packet end match
+            if (pos >= 0 && strcmp(temp + pos, paket_end) == 0) {
+                // Full packet received
+                if (send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0) == -1) {
+                    printf("Sending message error\n");
                     close(new_fd);
-                    exit(1);
-                } else printf("Message sent \n");
+                    break;
+                } else printf("Message sent\n");
+
+                //remove the processed packet
+                temp[pos] = '\0';
             }
         }
-
-        //Message sent, close new socket
-        close(new_fd);
-
     }
 
     //Close Socket
