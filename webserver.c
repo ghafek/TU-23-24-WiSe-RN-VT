@@ -98,13 +98,14 @@ int main (int argc, char* argv[]) {
         }
 
         //variable to store received messages
-        char buf[1024]; //store messages from client
-        char temp[1024] = ""; //copy the content of buffer
+        char temp[1024] = ""; //store messages from client
+        char buf[1024] = ""; //copy the content of temp
         char* paket_end = "\r\n\r\n"; //identifier for packet end
 
         //receive until disconnected
         while (1) {
-            int receive_value = recv(new_fd, buf, sizeof(buf) - 1, 0);
+            memset(temp, 0, 1024);
+            int receive_value = recv(new_fd, temp, 1024, 0);
 
             if (receive_value == -1) {
                 printf("Receive error\n");
@@ -117,10 +118,9 @@ int main (int argc, char* argv[]) {
                 break;
             }
 
-            buf[receive_value] = '\0'; //set a null terminator for the end of the buffer
-            strncat(temp, buf, receive_value); //add the content of buffer to temp
+            strcat(buf, temp); //add the content of temp to buffer
+            while (strstr(buf, paket_end) != NULL) {
 
-            while (strstr(temp, paket_end) != NULL) {
                 // Full packet received
                 if (send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0) == -1) {
                     printf("Sending message error\n");
@@ -129,10 +129,10 @@ int main (int argc, char* argv[]) {
                 } else printf("Message sent\n");
 
                 //find the end position of the processed packet
-                char* pos = strstr(temp, paket_end) + strlen(paket_end);
+                char* pos = strstr(buf, paket_end) + strlen(paket_end);
 
                 //remove the processed packet
-                temp[strlen(pos)] = '\0';
+                strcpy(buf, pos);
             }
         }
     }
