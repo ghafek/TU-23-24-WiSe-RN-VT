@@ -11,11 +11,13 @@
 
 int main (int argc, char* argv[]) {
 
-    ////Only Implemented for IPv4 Till now, Can use getaddrinfo to simult. use for IPv6 and IPv4
-    ////Preferably use errno, perror when throwing errors, instead of simple printf.
+    /**
+     * only Implemented for IPv4
+     * preferably use errno, perror when throwing errors, instead of simple printf
+     */
 
 
-    //Check the command line Arguments count (webserver 0.0.0.0 1234).
+    //Check the command line Arguments count (webserver 0.0.0.0 1234)
     if (argc != 3)
     {
         printf("Please enter the correct number of Arguments \n");
@@ -25,18 +27,25 @@ int main (int argc, char* argv[]) {
     //Struct for Socket Address (IPv4):
     struct sockaddr_in sa;
 
-    //Save the IP Address and Port from the Command Line Arguments
-    //Check if Port is passed as a number format
+    /** IP = Save the IP Address and Port from the Command Line Arguments
+        PORT = Check if Port is passed as a number format **/
+
     const char* IP = argv[1];
     const int PORT = atoi(argv[2]);
 
-    //Fill the sa structure
+    /**
+     * fill the sa structure
+     * sin_family = IPv4/6 Address Family
+     * sin_port = Port in Network Byte Order
+     * inet_pton(): converts IP from text to binary form
+     */
+
     memset(&sa, 0, sizeof(sa)); //clear up the struct first
     sa.sin_family = AF_INET; //IPv4 Address Family
     sa.sin_port = htons(PORT); //Port in Network Byte Order
     inet_pton(AF_INET, IP, &(sa.sin_addr)); //IP from text to binary form
 
-    //Check if a correct IP Address format was entered (0.0.0.0)
+    //Check if correct IP Address format was entered (0.0.0.0)
     if (inet_pton(AF_INET, IP, &(sa.sin_addr)) != 1)
     {
         printf("IP Address Format wrong \n");
@@ -52,7 +61,13 @@ int main (int argc, char* argv[]) {
 
 
 
-    //Socket Creation
+    /**
+     * socket creation
+     *
+     * sockfd = host socket
+     * bind(): binds the socket to the IP and Port
+     */
+
     int sockfd;
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1)
@@ -65,7 +80,6 @@ int main (int argc, char* argv[]) {
         printf("Socket created successfully \n");
     }
 
-    // Bind the Socket to the IP and Port
     if (bind(sockfd, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
         printf("Bind error");
         close(sockfd);
@@ -74,9 +88,13 @@ int main (int argc, char* argv[]) {
         printf("Bind successful \n");
     }
 
-    // Listen for incoming connections
-    // Listen to any number of connections
-    if (listen(sockfd, 10) == -1) {  //10 is the number of connections that can Queue
+
+    /**
+     * listen(): listen for incoming connections
+     * listen(host socket, 10): 10 set for max. number of connections in queue
+     */
+
+    if (listen(sockfd, 10) == -1) {
         printf("Listen error");
         close(sockfd);
         exit(1);
@@ -84,12 +102,18 @@ int main (int argc, char* argv[]) {
         printf("Listen successful \n");
     }
 
-    //Save the incoming connections address in the struct
+    /**
+     * save the incoming connections address in the struct
+     * their_addr = client address
+     * new_fd = client socket
+     * accept(): host accepts new connection from client
+     */
     struct sockaddr_storage their_addr;
     socklen_t addr_size;
 
     while (1) {
         addr_size = sizeof their_addr;
+
         //accept new connections
         int new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
 
@@ -97,57 +121,141 @@ int main (int argc, char* argv[]) {
             printf("New socket creation error \n");
         }
 
-        char buf[1024] = "";
+        /**
+         * variable to store received messages
+         * temp = messages from client
+         * buf = combined content from client (requests to be processed)
+         * paket_end = identifier for the end of request
+         */
+
         char temp[1024] = "";
+        char buf[1024] = "";
         char* paket_end = "\r\n\r\n";
-        char* bad_request = "HTTP/1.1 400 Bad Request\r\n\r\n";
 
 
-        while(1) {
+        /**
+         * receive until disconnected
+         *
+         * recv(): receive messages from client and store the content in temp
+         *         receive_value = output of recv = size of message from client
+         *         gives -1 back when there is an error
+         *         gives 0 back when client disconnects from the host socket
+         *
+         * recv(client socket, message target, message length, 0): always set flags (last parameter) to 0
+         *
+         * strcat(): use to concatenate the messages from client to the buf variable so it can be processed
+         */
+
+        while (1) {
+
             memset(temp, 0, 1024);
             int receive_value = recv(new_fd, temp, 1024, 0);
-            strcat(buf, temp);
+
+            if (receive_value == -1) {
+                printf("Receive error\n");
+                close(new_fd);
+                break;
+
+            } else if (receive_value == 0) {
+                printf("Client disconnected\n");
+                close(new_fd);
+                break;
+            }
+
+            strcat(buf, temp); //add the content of temp to buffer
+
+            /**
+             * reiterate the loop until all packets are processed
+             * send a message for each processed packet
+             *
+             * strstr(): use to search for a particular substring from a string
+             *           gives the pointer of the first character of the substring if found
+             *           gives NULL pointer back otherwise
+             *
+             *           if a substring is found, a full packet is received and can be processed
+             *
+             * send(): sends a message to the client socket
+             *         gives -1 back if there is and error
+             *         send "400 Bad Request" for every received packet
+             *
+             * send(client socket, message, message length, 0): always set flags (last parameter) to 0
+             *
+             * pos = pointer to end position of the processed packet
+             * strcpy(): use to remove the processed packet from the buf variable,
+             *           store only the messages that is not processed.
+             */
+
             while (strstr(buf, paket_end) != NULL) {
-                // if (strstr(buf, "HTTP/1.") == NULL) {
-                //     send(new_fd, bad_request, strlen(bad_request), 0);
-                // }
-                // else {
-                //     if(strstr(buf, "GET") != NULL) {
-                //     send(new_fd, "404", strlen("404"), 0);
-                // }
-                // else {
 
-                //     send(new_fd, "501", strlen("501"), 0);
-                // }
+                char* start_line = strtok(buf, "\r\n");
+                char* method = strtok(start_line, " ");
+                char* URI = strtok(NULL, " ");
+                char* HTTP_version = strtok(NULL, " ");
 
-                // send(new_fd, "Reply\r\n\r\n", strlen("Reply\r\n\r\n"), 0);
 
-                // }
-
-                if (strstr(buf, "HTTP/1.") != NULL) {
-                    if (strstr(buf, "GET") != NULL)
-                    {
-                        send(new_fd, "404\r\n\r\n", strlen("501\r\n\r\n"),0);
+                if (method == NULL || URI == NULL || HTTP_version == NULL) {
+                    //Error message for invalid request
+                    if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                        printf("Sending message error\n");
+                        close(new_fd);
+                        break;
+                    } else printf("400 Bad Request sent\n");
+                }
+                else if (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0 && strcmp(method, "PUT") != 0 && strcmp(method, "DELETE") != 0 && strcmp(method, "PATCH") != 0) {
+                    if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                        printf("Sending message error\n");
+                        close(new_fd);
+                        break;
+                    } else printf("400 Bad Request sent\n");
+                }
+                else if (strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) {
+                    char* content_length_position = strstr(buf, "Content-Length");
+                    if (content_length_position == NULL){
+                        if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                            printf("Sending message error\n");
+                            close(new_fd);
+                            break;
+                        } else printf("400 Bad Request sent\n");
                     }
                     else {
-                        send(new_fd, "501\r\n\r\n", strlen("501\r\n\r\n"),0);
+                        char* content_length_string = strcpy(buf, content_length_position + strlen("Content-Length: "));
+                        content_length_string = strtok(content_length_string, "\r\n");
+                        int content_length_size = atoi(content_length_string);
+                        if (content_length_size <= 0) {
+                            if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                                printf("Sending message error\n");
+                                close(new_fd);
+                                break;
+                            } else printf("400 Bad Request sent\n");
+                        }
                     }
                 }
                 else {
-                    send(new_fd, bad_request, strlen(bad_request),0);
+                    if (strcmp(method, "GET") == 0) {
+                        if (send(new_fd, "HTTP/1.1 404 GET Request\r\n\r\n", strlen("HTTP/1.1 404 GET Request\r\n\r\n"), 0) == -1) {
+                            printf("Sending message error\n");
+                            close(new_fd);
+                            break;
+                        } else printf("404 GET Request sent\n");
+                    }
+                    else {
+                        if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
+                            printf("Sending message error\n");
+                            close(new_fd);
+                            break;
+                        } else printf("501 Other Request sent\n");
+                    }
                 }
 
                 char* pos = strstr(buf, paket_end) + strlen(paket_end);
+
+                //remove the processed packet
                 strcpy(buf, pos);
             }
-
-            printf("temp = %s", temp);
-            printf("buf = %s", buf);
         }
-
     }
 
     //Close Socket
-    //close(sockfd);
+    close(sockfd);
 
 }
