@@ -183,17 +183,32 @@ int main (int argc, char* argv[]) {
              * pos = pointer to end position of the processed packet
              * strcpy(): use to remove the processed packet from the buf variable,
              *           store only the messages that is not processed.
+             *
+             * start_line = first line of an HTTP request, contains method, URI, and HTTP_version
+             * method = GET, POST, PUT, DELETE, PATCH, HEAD
+             *
+             *
+             * Structure of the packet processing:
+             *
+             * while: client tries to send requests
+             *      check if start_line exists, if no: 400 Bad Request
+             *      check if method, URI, HTTP_Version exists, if no: 400 Bad Request
+             *      check if method is valid, if no: 400 Bad Request
+             *      check if method that needs Content-Length has one, if no: 400 Bad Request
+             *      check if method that needs Content-Length has one with a positive natural number, if no: 400 Bad Request
+             *      check if method is a GET method, if yes: 404 GET Request
+             *      else method is either DELETE, HEAD, or POST, PUT, PATCH with a positive Content-Length size, 501 Other Request
+             *
              */
 
             while (strstr(buf, paket_end) != NULL) {
 
                 char *pos = strstr(buf, paket_end) + strlen(paket_end);
-                // Check if the request is valid
                 char *start_line = strtok(buf, "\r\n");
                 char *method, *URI, *HTTP_version;
 
+                //check if the request is valid
                 if (start_line == NULL) {
-                    // Invalid request: 400 Bad Request
                     if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                         printf("Sending message error\n");
                         close(new_fd);
@@ -201,12 +216,15 @@ int main (int argc, char* argv[]) {
                     } else
                         printf("400 Bad Request sent\n");
                 } else {
+
+                    //store the method, URI, and HTTP_Version of the request
                     method = strtok(start_line, " ");
                     URI = strtok(NULL, " ");
                     HTTP_version = strtok(NULL, " ");
 
                     if (method == NULL || URI == NULL || HTTP_version == NULL) {
-                        // Invalid request: 400 Bad Request
+
+                        //request has either no method, URI, or HTTP_Version
                         if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                             printf("Sending message error\n");
                             close(new_fd);
@@ -215,6 +233,8 @@ int main (int argc, char* argv[]) {
                             printf("400 Bad Request sent\n");
 
                     } else if (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0 && strcmp(method, "PUT") != 0 && strcmp(method, "DELETE") != 0 && strcmp(method, "PATCH") != 0 && strcmp(method, "HEAD") != 0) {
+
+                        //request method is wrong/undefined
                         if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                             printf("Sending message error\n");
                             close(new_fd);
@@ -223,7 +243,8 @@ int main (int argc, char* argv[]) {
                             printf("400 Bad Request sent\n");
 
                     } else if ((strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) && strstr(buf, "Content-Length:") == NULL) {
-                        // Invalid request: 400 Bad Request
+
+                        //request needs Content-Length but doesn't have one
                         if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                             printf("Sending message error\n");
                             close(new_fd);
@@ -232,24 +253,34 @@ int main (int argc, char* argv[]) {
                             printf("400 Bad Request sent\n");
 
                     } else if ((strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) && strstr(buf, "Content-Length:") != NULL) {
-                        // Extract and parse Content-Length
+
+                        /**
+                         * request needs and has Content-Length
+                         *
+                         * Content-Length must be a positive natural number
+                         * content_length_position = position of the first character from "Content-Length"
+                         * content_length_string = size of Content-Length as string
+                         * content_length_size = size of Content-Length as integer
+                         *
+                         * atoi(): converts string to int
+                         */
+
                         char *content_length_position = strstr(buf, "Content-Length:");
-                        if (content_length_position != NULL) {
-                            char *content_length_string = strtok(content_length_position + strlen("Content-Length: "),"\r\n");
-                            int content_length_size = atoi(content_length_string);
-                            if (content_length_size <= 0) {
-                                // Invalid request: 400 Bad Request
-                                if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
-                                    printf("Sending message error\n");
-                                    close(new_fd);
-                                    break;
-                                } else
-                                    printf("400 Bad Request sent\n");
-                            }
+                        char *content_length_string = strtok(content_length_position + strlen("Content-Length: "),"\r\n");
+                        int content_length_size = atoi(content_length_string);
+                        if (content_length_size <= 0) {
+                            //content_length_size invalid
+                            if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                                printf("Sending message error\n");
+                                close(new_fd);
+                                break;
+                            } else
+                                printf("400 Bad Request sent\n");
                         }
+
                     } else {
                         if (strcmp(method, "GET") == 0) {
-                            // Invalid request: 404 GET Request
+                            //request is a GET request
                             if (send(new_fd, "HTTP/1.1 404 GET Request\r\n\r\n", strlen("HTTP/1.1 404 GET Request\r\n\r\n"), 0) == -1) {
                                 printf("Sending message error\n");
                                 close(new_fd);
@@ -258,7 +289,7 @@ int main (int argc, char* argv[]) {
                                 printf("404 GET Request sent\n");
 
                         } else {
-                            // Invalid request: 501 Other Request
+                            //request is either a DELETE or HEAD request, or a POST, PUT, PATCH request with a positive Content-Length size
                             if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
                                 printf("Sending message error\n");
                                 close(new_fd);
