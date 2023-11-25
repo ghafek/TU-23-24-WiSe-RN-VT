@@ -209,26 +209,20 @@ int main (int argc, char* argv[]) {
                     } else printf("400 Bad Request sent\n");
                 }
                 else if (strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) {
-                    char* content_length_position = strstr(buf, "Content-Length");
-                    if (content_length_position == NULL){
-                        if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
-                            printf("Sending message error\n");
-                            close(new_fd);
-                            break;
-                        } else printf("400 Bad Request sent\n");
-                    }
-                    else {
-                        char* content_length_string = strcpy(buf, content_length_position + strlen("Content-Length: "));
-                        content_length_string = strtok(content_length_string, "\r\n");
+                    char *content_length_position = strstr(buf, "Content-Length:");
+                    if (content_length_position != NULL) {
+                        char *content_length_string = strtok(content_length_position + strlen("Content-Length: "),"\r\n");
                         int content_length_size = atoi(content_length_string);
                         if (content_length_size <= 0) {
-                            if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                            if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n",
+                                     strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                                 printf("Sending message error\n");
                                 close(new_fd);
                                 break;
                             } else printf("400 Bad Request sent\n");
                         }
                     }
+
                 }
                 else {
                     if (strcmp(method, "GET") == 0) {
