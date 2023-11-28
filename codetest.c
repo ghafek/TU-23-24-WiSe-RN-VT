@@ -140,6 +140,7 @@ int main (int argc, char* argv[]) {
         char buf[1024] = "";
         char packet[1024] = "";
         char* paket_end = "\r\n\r\n";
+        char* contents[100] = {NULL};
 
 
         /**
@@ -205,13 +206,15 @@ int main (int argc, char* argv[]) {
              *      check if method, URI, HTTP_Version exists, if no: 400 Bad Request
              *      check if method is valid, if no: 400 Bad Request
              *      check if method that needs Content-Length has one, if no: 400 Bad Request
-             *      check if method that needs Content-Length has one with a positive natural number, if no: 400 Bad Request
+             *          else check if Content-Length is filled, if no: 400 Bad Request
+             *              check if Content-Length has a positive natural number, if no: 400 Bad Request
+             *              501 Other Request
              *      check if method is a GET method, if yes:
              *          check if URI is /static/bar, if yes: 200, Bar
              *          check if URI is /static/foo, if yes: 200, Foo
              *          check if URI is /static/baz, if yes: 200, Baz
              *          else normal GET method, 404 GET Request
-             *      else method is either DELETE, HEAD, or POST, PUT, PATCH with a positive Content-Length size, 501 Other Request
+             *      else method is either DELETE, HEAD, 501 Other Request
              *
              */
 
@@ -293,18 +296,69 @@ int main (int argc, char* argv[]) {
                                     } else
                                         printf("400 Bad Request sent\n");
                                 } else {
-                                    if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
-                                        printf("Sending message error\n");
-                                        close(new_fd);
-                                        break;
-                                    } else
-                                        printf("501 Other Request sent\n");
+                                    if (strcmp(method, "PUT") == 0){
+                                        if (strncmp(URI, "/dynamic", strlen("/dynamic")) == 0){
+                                            char* element = strtok(URI, "/");
+                                            while (element != NULL) {
+                                                element = strtok(NULL, "/");
+                                            }
+                                            for (int i = 0; i < 100; i++){
+                                                if (contents[i] == element) {
+                                                    if (send(new_fd, "HTTP/1.1 204 No Content\r\nContent-Length: 10\r\n\r\n",
+                                                             strlen("HTTP/1.1 204 No Content\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                                        printf("Sending message error\n");
+                                                        close(new_fd);
+                                                        break;
+                                                    } else
+                                                        printf("204 No Content sent\n");
+                                                    close(new_fd);
+                                                    break;
+                                                }
+                                                else {
+                                                    for (int j = 0; j < 100; j++) {
+                                                        if (contents[j] == NULL) {
+                                                            contents[j] = element;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (send(new_fd, "HTTP/1.1 201 Status Created\r\nContent-Length: 10\r\n\r\n",
+                                                             strlen("HTTP/1.1 201 Status Created\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                                        printf("Sending message error\n");
+                                                        close(new_fd);
+                                                        break;
+                                                    } else
+                                                        printf("201 Status Created sent\n");
+                                                    close(new_fd);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        else {
+                                            if (send(new_fd, "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\n",
+                                                     strlen("HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                                printf("Sending message error\n");
+                                                close(new_fd);
+                                                break;
+                                            } else
+                                                printf("403 Forbidden Request sent\n");
+                                            close(new_fd);
+                                            break;
+                                        }
+                                    }
+                                    else{
+                                        if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
+                                            printf("Sending message error\n");
+                                            close(new_fd);
+                                            break;
+                                        } else
+                                            printf("501 Other Request sent\n");
+                                    }
+
                                 }
                             }
                             else {
                                 //content_length_size invalid
-                                if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n",
-                                         strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                                if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                                     printf("Sending message error\n");
                                     close(new_fd);
                                     break;
@@ -363,8 +417,50 @@ int main (int argc, char* argv[]) {
                                 } else
                                     printf("404 GET Request sent\n");
                             }
-                        } else {
-                            //request is either a DELETE or HEAD request, or a POST, PUT, PATCH request with a positive Content-Length size
+                        }
+                        else if (strcmp(method, "DELETE") == 0) {
+                            if (strncmp(URI, "/dynamic", strlen("/dynamic")) == 0){
+                                char* element = strtok(URI, "/");
+                                while (element != NULL){
+                                    element = strtok(NULL, "/");
+                                }
+                                for (int i = 0; i < 100; i++) {
+                                    if (element == contents[i]) {
+                                        contents[i] = NULL;
+                                        if (send(new_fd, "HTTP/1.1 204 No Content\r\n\r\n", strlen("HTTP/1.1 204 No Content\r\n\r\n"), 0) == -1) {
+                                            printf("Sending message error\n");
+                                            close(new_fd);
+                                            break;
+                                        } else
+                                            printf("204 No Content sent\n");
+                                        close(new_fd);
+                                        break;
+                                    }
+                                    else {
+                                        if (send(new_fd, "HTTP/1.1 404 Not Found\r\n\r\n", strlen("HTTP/1.1 404 Not Found\r\n\r\n"), 0) == -1) {
+                                            printf("Sending message error\n");
+                                            close(new_fd);
+                                            break;
+                                        } else
+                                            printf("404 Not Found\n");
+                                        close(new_fd);
+                                        break;
+                                    }
+                                }
+                            }
+                            else {
+                                if (send(new_fd, "HTTP/1.1 403 Forbidden\r\n\r\n", strlen("HTTP/1.1 403 Forbidden\r\n\r\n"), 0) == -1) {
+                                    printf("Sending message error\n");
+                                    close(new_fd);
+                                    break;
+                                } else
+                                    printf("403 Forbidden Request sent\n");
+                                close(new_fd);
+                                break;
+                            }
+                        }
+                        else {
+                            //request is a HEAD request
                             if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
                                 printf("Sending message error\n");
                                 close(new_fd);
