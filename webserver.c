@@ -80,8 +80,16 @@ int main (int argc, char* argv[]) {
         printf("Socket created successfully \n");
     }
 
+    //option to reuse address
+    int reuse = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1) {
+        printf("setting SO_REUSEADDR failed \n");
+        close(sockfd);
+        exit(1);
+    }
+
     if (bind(sockfd, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
-        printf("Bind error");
+        printf("Bind error \n");
         close(sockfd);
         exit(1);
     } else {
@@ -130,6 +138,7 @@ int main (int argc, char* argv[]) {
 
         char temp[1024] = "";
         char buf[1024] = "";
+        char packet[1024] = "";
         char* paket_end = "\r\n\r\n";
 
 
@@ -163,6 +172,7 @@ int main (int argc, char* argv[]) {
             }
 
             strcat(buf, temp); //add the content of temp to buffer
+            strcpy(packet, buf);
 
             /**
              * reiterate the loop until all packets are processed
@@ -195,13 +205,15 @@ int main (int argc, char* argv[]) {
              *      check if method, URI, HTTP_Version exists, if no: 400 Bad Request
              *      check if method is valid, if no: 400 Bad Request
              *      check if method that needs Content-Length has one, if no: 400 Bad Request
-             *      check if method that needs Content-Length has one with a positive natural number, if no: 400 Bad Request
+             *          else check if Content-Length is filled, if no: 400 Bad Request
+             *              check if Content-Length has a positive natural number, if no: 400 Bad Request
+             *              501 Other Request
              *      check if method is a GET method, if yes:
              *          check if URI is /static/bar, if yes: 200, Bar
              *          check if URI is /static/foo, if yes: 200, Foo
              *          check if URI is /static/baz, if yes: 200, Baz
              *          else normal GET method, 404 GET Request
-             *      else method is either DELETE, HEAD, or POST, PUT, PATCH with a positive Content-Length size, 501 Other Request
+             *      else method is either DELETE, HEAD, 501 Other Request
              *
              */
 
@@ -246,34 +258,10 @@ int main (int argc, char* argv[]) {
                         } else
                             printf("400 Bad Request sent\n");
 
-                    } else if ((strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) && strstr(buf, "Content-Length:") == NULL) {
+                    } else if (strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) {
 
-                        //request needs Content-Length but doesn't have one
-                        if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
-                            printf("Sending message error\n");
-                            close(new_fd);
-                            break;
-                        } else
-                            printf("400 Bad Request sent\n");
-
-                    } else if ((strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0 || strcmp(method, "PATCH") == 0) && strstr(buf, "Content-Length:") != NULL) {
-
-                        /**
-                         * request needs and has Content-Length
-                         *
-                         * Content-Length must be a positive natural number
-                         * content_length_position = position of the first character from "Content-Length"
-                         * content_length_string = size of Content-Length as string
-                         * content_length_size = size of Content-Length as integer
-                         *
-                         * atoi(): converts string to int
-                         */
-
-                        char *content_length_position = strstr(buf, "Content-Length:");
-                        char *content_length_string = strtok(content_length_position + strlen("Content-Length: "),"\r\n");
-                        int content_length_size = atoi(content_length_string);
-                        if (content_length_size <= 0) {
-                            //content_length_size invalid
+                        if (strstr(packet, "Content-Length: ") == NULL) {
+                            //request needs Content-Length but doesn't have one
                             if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n", strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
                                 printf("Sending message error\n");
                                 close(new_fd);
@@ -281,75 +269,121 @@ int main (int argc, char* argv[]) {
                             } else
                                 printf("400 Bad Request sent\n");
                         }
+                        else {
+                            /**
+                             * request needs and has Content-Length
+                             *
+                             * Content-Length must be a positive natural number
+                             * content_length_position = position of the first character from "Content-Length"
+                             * content_length_string = size of Content-Length as string
+                             * content_length_size = size of Content-Length as integer
+                             *
+                             * atoi(): converts string to int
+                             */
+
+                            char *content_length_position = strstr(packet, "Content-Length: ");
+                            char *content_length_string = strtok(content_length_position + strlen("Content-Length: "), "\r\n");
+                            if (content_length_string != NULL) {
+                                int content_length_size = atoi(content_length_string);
+                                if (content_length_size <= 0) {
+                                    //content_length_size invalid
+                                    if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n",
+                                             strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("400 Bad Request sent\n");
+                                } else {
+                                    if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("501 Other Request sent\n");
+                                }
+                            }
+                            else {
+                                //content_length_size invalid
+                                if (send(new_fd, "HTTP/1.1 400 Bad Request\r\n\r\n",
+                                         strlen("HTTP/1.1 400 Bad Request\r\n\r\n"), 0) == -1) {
+                                    printf("Sending message error\n");
+                                    close(new_fd);
+                                    break;
+                                } else
+                                    printf("400 Bad Request sent\n");
+                            }
+
+                        }
 
                     } else {
-                        if (strcmp(method, "GET") == 0) {
-                            //method is GET
-                            if (strcmp(URI, "/static/bar") == 0)
-                            {
-                                //send the content in /static/bar
-                                if (send(new_fd, "HTTP/1.1 200 Bar Request\r\nContent-Type: text/plain\r\n\r\nBar", strlen("HTTP/1.1 200 Bar Request\r\nContent-Type: text/plain\r\n\r\nBar"), 0) == -1) {
+                            if (strcmp(method, "GET") == 0) {
+                                //method is GET
+                                if (strcmp(URI, "/static/bar") == 0)
+                                {
+                                    //send the content in /static/bar
+                                    if (send(new_fd, "HTTP/1.1 200 Bar Request\r\nContent-Type: text/plain\r\n\r\nBar", strlen("HTTP/1.1 200 Bar Request\r\nContent-Type: text/plain\r\n\r\nBar"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("HTTP/1.1 200 Bar Request sent\n");
+                                    close(new_fd);
+                                    break;
+                                }
+                                else if (strcmp(URI, "/static/foo") == 0)
+                                {
+                                    //send the content in /static/foo
+                                    if (send(new_fd, "HTTP/1.1 200 Foo Request\r\nContent-Type: text/plain\r\n\r\nFoo", strlen("HTTP/1.1 200 Foo Request\r\nContent-Type: text/plain\r\n\r\nFoo"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("HTTP/1.1 200 Foo Request sent\n");
+                                    close(new_fd);
+                                    break;
+                                }
+                                else if (strcmp(URI, "/static/baz") == 0)
+                                {
+                                    //send the content in /static/baz
+                                    if (send(new_fd, "HTTP/1.1 200 Baz Request\r\nContent-Type: text/plain\r\n\r\nBaz", strlen("HTTP/1.1 200 Baz Request\r\nContent-Type: text/plain\r\n\r\nBaz"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("HTTP/1.1 200 Baz Request sent\n");
+                                    close(new_fd);
+                                    break;
+                                }
+                                else
+                                {
+                                    //normal GET request
+                                    if (send(new_fd, "HTTP/1.1 404 GET Request\r\n\r\n", strlen("HTTP/1.1 404 GET Request\r\n\r\n"), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("404 GET Request sent\n");
+                                }
+                            } else {
+                                //request is either a DELETE or HEAD request
+                                if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
                                     printf("Sending message error\n");
                                     close(new_fd);
                                     break;
                                 } else
-                                    printf("HTTP/1.1 200 Bar Request sent\n");
-                                    close(new_fd);
-                                    break;
+                                    printf("501 Other Request sent\n");
                             }
-                            else if (strcmp(URI, "/static/foo") == 0)
-                            {
-                                //send the content in /static/foo
-                                if (send(new_fd, "HTTP/1.1 200 Foo Request\r\nContent-Type: text/plain\r\n\r\nFoo", strlen("HTTP/1.1 200 Foo Request\r\nContent-Type: text/plain\r\n\r\nFoo"), 0) == -1) {
-                                    printf("Sending message error\n");
-                                    close(new_fd);
-                                    break;
-                                } else
-                                    printf("HTTP/1.1 200 Foo Request sent\n");
-                                    close(new_fd);
-                                    break;
-                            }
-                            else if (strcmp(URI, "/static/baz") == 0)
-                            {
-                                //send the content in /static/baz
-                                if (send(new_fd, "HTTP/1.1 200 Baz Request\r\nContent-Type: text/plain\r\n\r\nBaz", strlen("HTTP/1.1 200 Baz Request\r\nContent-Type: text/plain\r\n\r\nBaz"), 0) == -1) {
-                                    printf("Sending message error\n");
-                                    close(new_fd);
-                                    break;
-                                } else
-                                    printf("HTTP/1.1 200 Baz Request sent\n");
-                                    close(new_fd);
-                                    break;
-                            }
-                            else
-                            {
-                                //normal GET request
-                                if (send(new_fd, "HTTP/1.1 404 GET Request\r\n\r\n", strlen("HTTP/1.1 404 GET Request\r\n\r\n"), 0) == -1) {
-                                    printf("Sending message error\n");
-                                    close(new_fd);
-                                    break;
-                                } else
-                                    printf("404 GET Request sent\n");
-                            }
-                        } else {
-                            //request is either a DELETE or HEAD request, or a POST, PUT, PATCH request with a positive Content-Length size
-                            if (send(new_fd, "HTTP/1.1 501 Other Request\r\n\r\n", strlen("HTTP/1.1 501 Other Request\r\n\r\n"), 0) == -1) {
-                                printf("Sending message error\n");
-                                close(new_fd);
-                                break;
-                            } else
-                                printf("501 Other Request sent\n");
                         }
                     }
+                    // Remove the processed packet
+                    strcpy(buf, pos);
                 }
-                // Remove the processed packet
-                strcpy(buf, pos);
             }
         }
+
+        //Close Socket
+        close(sockfd);
+        return 0;
+
     }
-
-    //Close Socket
-    close(sockfd);
-    return 0;
-
-}
