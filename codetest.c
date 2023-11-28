@@ -303,9 +303,10 @@ int main (int argc, char* argv[]) {
                                                 element = strtok(NULL, "/");
                                             }
                                             for (int i = 0; i < 100; i++){
-                                                if (contents[i] == element) {
-                                                    if (send(new_fd, "HTTP/1.1 204 No Content\r\nContent-Length: 10\r\n\r\n",
-                                                             strlen("HTTP/1.1 204 No Content\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                                if (strcmp(element, contents[i]) == 0) {
+                                                    char response[1024];
+                                                    snprintf(response, sizeof(response), "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                                    if (send(new_fd, response, strlen(response), 0) == -1) {
                                                         printf("Sending message error\n");
                                                         close(new_fd);
                                                         break;
@@ -316,13 +317,14 @@ int main (int argc, char* argv[]) {
                                                 }
                                                 else {
                                                     for (int j = 0; j < 100; j++) {
-                                                        if (contents[j] == NULL) {
+                                                        if (strcmp(element, contents[j]) == 0) {
                                                             contents[j] = element;
                                                             break;
                                                         }
                                                     }
-                                                    if (send(new_fd, "HTTP/1.1 201 Status Created\r\nContent-Length: 10\r\n\r\n",
-                                                             strlen("HTTP/1.1 201 Status Created\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                                    char response[1024];
+                                                    snprintf(response, sizeof(response), "HTTP/1.1 201 Status Created\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                                    if (send(new_fd, response, strlen(response), 0) == -1) {
                                                         printf("Sending message error\n");
                                                         close(new_fd);
                                                         break;
@@ -334,8 +336,7 @@ int main (int argc, char* argv[]) {
                                             }
                                         }
                                         else {
-                                            if (send(new_fd, "HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\n",
-                                                     strlen("HTTP/1.1 403 Forbidden\r\nContent-Length: 10\r\n\r\n"), 0) == -1) {
+                                            if (send(new_fd, "HTTP/1.1 403 Forbidden\r\n\r\n", strlen("HTTP/1.1 403 Forbidden\r\n\r\n"), 0) == -1) {
                                                 printf("Sending message error\n");
                                                 close(new_fd);
                                                 break;
@@ -407,6 +408,39 @@ int main (int argc, char* argv[]) {
                                 close(new_fd);
                                 break;
                             }
+                            else if (strncmp(URI, "/dynamic", strlen("/dynamic")) == 0) {
+                                if (strncmp(URI, "/dynamic", strlen("/dynamic")) == 0) {
+                                    char *element = strtok(URI, "/");
+                                    while (element != NULL) {
+                                        element = strtok(NULL, "/");
+                                    }
+                                    for (int i = 0; i < 100; i++){
+                                        if (strcmp(element, contents[i]) == 0){
+                                            char response[1024];
+                                            snprintf(response, sizeof(response), "HTTP/1.1 200 %s Request\r\nContent-Type: text/plain\r\n\r\n%s", element, element);
+                                            if (send(new_fd, response, strlen(response), 0) == -1) {
+                                                printf("Sending message error\n");
+                                                close(new_fd);
+                                                break;
+                                            } else
+                                                printf("200 GET Request sent\n");
+                                            close(new_fd);
+                                            break;
+                                        }
+                                    }
+                                    char response[1024];
+                                    snprintf(response, sizeof(response), "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                    if (send(new_fd, response, strlen(response), 0) == -1) {
+                                        printf("Sending message error\n");
+                                        close(new_fd);
+                                        break;
+                                    } else
+                                        printf("404 Not Found sent\n");
+                                    close(new_fd);
+                                    break;
+                                }
+
+                            }
                             else
                             {
                                 //normal GET request
@@ -425,9 +459,11 @@ int main (int argc, char* argv[]) {
                                     element = strtok(NULL, "/");
                                 }
                                 for (int i = 0; i < 100; i++) {
-                                    if (element == contents[i]) {
+                                    if (strcmp(element,contents[i]) == 0) {
                                         contents[i] = NULL;
-                                        if (send(new_fd, "HTTP/1.1 204 No Content\r\n\r\n", strlen("HTTP/1.1 204 No Content\r\n\r\n"), 0) == -1) {
+                                        char response[1024];
+                                        snprintf(response, sizeof(response), "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                        if (send(new_fd, response, strlen(response), 0) == -1) {
                                             printf("Sending message error\n");
                                             close(new_fd);
                                             break;
@@ -437,7 +473,9 @@ int main (int argc, char* argv[]) {
                                         break;
                                     }
                                     else {
-                                        if (send(new_fd, "HTTP/1.1 404 Not Found\r\n\r\n", strlen("HTTP/1.1 404 Not Found\r\n\r\n"), 0) == -1) {
+                                        char response[1024];
+                                        snprintf(response, sizeof(response), "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                        if (send(new_fd, response, strlen(response), 0) == -1) {
                                             printf("Sending message error\n");
                                             close(new_fd);
                                             break;
