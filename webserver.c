@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
                                                         content_found = 1;
                                                         int content_length = strlen(content[i]);
                                                         char response[128];
-                                                        sprintf(response, "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", content_length, content[i]);
+                                                        sprintf(response, "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s\r\n", content_length, content[i]);
                                                         if (send(new_fd, response, strlen(response), 0) == -1) {
                                                             printf("Sending message error\n");
                                                             close(new_fd);
@@ -423,7 +423,7 @@ int main(int argc, char **argv) {
                                                             content[i] = strdup(element);
                                                             int content_length = strlen(content[i]);
                                                             char response[128];
-                                                            sprintf(response, "HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", content_length, content[i]);
+                                                            sprintf(response, "HTTP/1.1 201 Created\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s\r\n", content_length, content[i]);
                                                             if (send(new_fd, response, strlen(response), 0) == -1) {
                                                                 printf("Sending message error\n");
                                                                 close(new_fd);
@@ -482,10 +482,10 @@ int main(int argc, char **argv) {
                                 }
                                 int content_found = 0;
                                 for (int i = 0; i < 100; i++){
-                                    if (strcmp(content[i], element) == 0){
+                                    if (content[i] != NULL && strcmp(content[i], element) == 0){
                                         content_found = 1;
                                         char response[128];
-                                        sprintf(response, "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n%s", content[i]);
+                                        sprintf(response, "HTTP/1.1 204 No Content\r\nContent-Type: text/plain\r\n\r\n%s\r\n", content[i]);
                                         content[i] = NULL;
                                         if (send(new_fd, response, strlen(response), 0) == -1) {
                                             printf("Sending message error\n");
@@ -500,7 +500,7 @@ int main(int argc, char **argv) {
                                 }
                                 if (content_found == 0){
                                     char response[128];
-                                    sprintf(response, "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n%s", element);
+                                    sprintf(response, "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n%s\r\n", element);
                                     if (send(new_fd, response, strlen(response), 0) == -1) {
                                         printf("Sending message error\n");
                                         close(new_fd);
