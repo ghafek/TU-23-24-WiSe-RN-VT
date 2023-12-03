@@ -136,6 +136,43 @@ depend:
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
+#=============================================================================
+# Target rules for targets named webserver
+
+# Build rule for target.
+webserver: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 webserver
+.PHONY : webserver
+
+# fast build rule for target.
+webserver/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webserver.dir/build.make CMakeFiles/webserver.dir/build
+.PHONY : webserver/fast
+
+webserver.o: webserver.c.o
+.PHONY : webserver.o
+
+# target to build an object file
+webserver.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webserver.dir/build.make CMakeFiles/webserver.dir/webserver.c.o
+.PHONY : webserver.c.o
+
+webserver.i: webserver.c.i
+.PHONY : webserver.i
+
+# target to preprocess a source file
+webserver.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webserver.dir/build.make CMakeFiles/webserver.dir/webserver.c.i
+.PHONY : webserver.c.i
+
+webserver.s: webserver.c.s
+.PHONY : webserver.s
+
+# target to generate assembly for a file
+webserver.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/webserver.dir/build.make CMakeFiles/webserver.dir/webserver.c.s
+.PHONY : webserver.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -146,6 +183,10 @@ help:
 	@echo "... package"
 	@echo "... package_source"
 	@echo "... rebuild_cache"
+	@echo "... webserver"
+	@echo "... webserver.o"
+	@echo "... webserver.i"
+	@echo "... webserver.s"
 .PHONY : help
 
 

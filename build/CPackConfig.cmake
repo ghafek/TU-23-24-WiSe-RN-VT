@@ -61,7 +61,7 @@ set(CPACK_RESOURCE_FILE_README "/opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Te
 set(CPACK_RESOURCE_FILE_WELCOME "/opt/homebrew/Cellar/cmake/3.27.7/share/cmake/Templates/CPack.GenericWelcome.txt")
 set(CPACK_SET_DESTDIR "OFF")
 set(CPACK_SOURCE_GENERATOR "TGZ")
-set(CPACK_SOURCE_IGNORE_FILES "/Users/ghafekalsaho/rnvs/TU-23-24-WiSe-RN-VT/build;/\\..*\$")
+set(CPACK_SOURCE_IGNORE_FILES "/Users/ghafekalsaho/rnvs/TU-23-24-WiSe-RN-VT/build;/\\..*\$;.git;.venv")
 set(CPACK_SOURCE_OUTPUT_CONFIG_FILE "/Users/ghafekalsaho/rnvs/TU-23-24-WiSe-RN-VT/build/CPackSourceConfig.cmake")
 set(CPACK_SYSTEM_NAME "Darwin")
 set(CPACK_THREADS "1")
